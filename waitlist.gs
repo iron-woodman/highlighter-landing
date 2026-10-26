@@ -37,9 +37,12 @@ function notify(email, intent, src) {
   }
 }
 
-// A browser opening the /exec URL sees this instead of an error page.
+// A browser opening the /exec URL sees this instead of an error page. It also shows which code
+// version is deployed and whether mail is authorized (mail: number of mails left today).
 function doGet() {
-  return reply({ ok: true, service: 'waitlist' });
+  var mail;
+  try { mail = MailApp.getRemainingDailyQuota(); } catch (err) { mail = 'not authorized'; }
+  return reply({ ok: true, service: 'waitlist', version: 3, mail: mail });
 }
 
 function sheet() {

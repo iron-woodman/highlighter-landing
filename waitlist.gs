@@ -19,7 +19,22 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+  notify(email, intent, String(p.src || ''));
   return reply({ ok: true });
+}
+
+// Mail the script owner (the account the web app runs as). The row is already saved,
+// so a mail failure (daily quota is ~100 on a free account) only logs and never fails the signup.
+function notify(email, intent, src) {
+  try {
+    var total = sheet().getLastRow() - 1;
+    MailApp.sendEmail(Session.getEffectiveUser().getEmail(),
+      'Highlighter: new ' + intent + ' (' + total + ' total)',
+      'Email: ' + email + '\nType: ' + intent + '\nSource: ' + (src || '-') + '\n\n' +
+      SpreadsheetApp.getActiveSpreadsheet().getUrl());
+  } catch (err) {
+    console.error('notify failed: ' + err);
+  }
 }
 
 // A browser opening the /exec URL sees this instead of an error page.

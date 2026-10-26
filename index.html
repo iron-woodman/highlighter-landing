@@ -328,6 +328,8 @@ footer { padding-block: 40px 56px; border-top: 1px solid var(--rule); font: 400 
         <form class="wait" id="wait-form" novalidate>
           <input type="email" id="wait-email" name="email" placeholder="you@example.com" autocomplete="email" required aria-label="Email address">
           <input type="hidden" id="wait-intent" name="intent" value="waitlist">
+          <input type="hidden" id="wait-src" name="src" value="">
+          <input type="text" id="wait-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
           <button class="btn" type="submit" id="wait-btn">Notify me</button>
           <div class="msg" id="wait-msg" role="status"></div>
         </form>
@@ -343,7 +345,7 @@ footer { padding-block: 40px 56px; border-top: 1px solid var(--rule); font: 400 
 <script>
 // Fill these two before publishing. Empty PAY_URL turns "Pre-order" into a waitlist signup with intent=preorder.
 var PAY_URL = '';            // checkout link from the payment provider
-var WAITLIST_ENDPOINT = '';  // form endpoint that accepts POST FormData (Formspree, Tally, own server)
+var WAITLIST_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzXDjGwR4n7LcixdgdrMjFUuZKhwQ2FrlVMH5Y7dW_7rxeIoS4MpGmGAq8WNbNGYeaX/exec';  // Google Apps Script web app /exec URL (see waitlist.gs)
 
 (function () {
   // ---------- pre-order buttons ----------
@@ -367,15 +369,19 @@ var WAITLIST_ENDPOINT = '';  // form endpoint that accepts POST FormData (Formsp
   // ---------- waitlist form ----------
   var form = document.getElementById('wait-form');
   var msg = document.getElementById('wait-msg');
+  // which Reddit thread or link brought the visitor: ?utm_source=... and the referrer
+  document.getElementById('wait-src').value = (location.search + ' ' + document.referrer).trim().slice(0, 300);
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     var email = document.getElementById('wait-email');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) { msg.textContent = 'Enter an email like you@example.com.'; email.focus(); return; }
     if (!WAITLIST_ENDPOINT) { msg.textContent = 'Saved in this preview only. The live page sends it to the waitlist.'; form.reset(); return; }
     waitBtn.disabled = true; msg.textContent = 'Sending…';
-    fetch(WAITLIST_ENDPOINT, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } })
-      .then(function (r) {
-        if (!r.ok) throw new Error(r.status);
+    // urlencoded body: a CORS "simple request" that Apps Script reads into e.parameter
+    fetch(WAITLIST_ENDPOINT, { method: 'POST', body: new URLSearchParams(new FormData(form)) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error);
         msg.textContent = waitIntent.value === 'preorder' ? 'You are on the list. The $29 link comes to your inbox first.' : 'You are on the list. One email at launch.';
         form.reset();
       })
